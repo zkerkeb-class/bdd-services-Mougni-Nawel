@@ -1,52 +1,90 @@
-// contract.model.js
-const mongoose = require('mongoose');
-const { v4: uuidv4 } = require('uuid');
+const mongoose = require("mongoose");
+const { v4: uuidv4 } = require("uuid");
 
-const contractSchema = new mongoose.Schema(
-  {
-    _id: {
-      type: String,
-      default: uuidv4
-    },
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      // required: true // Uncomment when user system is ready
-    },
-    content: {
-      type: String,
-      required: true
-    },
-    uploadDate: {
-      type: Date,
-      default: Date.now
-    },
-    status: {
-      type: String,
-      enum: ['pending', 'processed'],
-      default: 'pending'
-    }
+const contractSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: uuidv4
   },
-  {
-    timestamps: true,
-    _id: false // Important: disable auto _id generation since we're using custom
+  user: {
+    type: String,
+    ref: "User",
+    required: true
+  },
+  content: {
+    type: String,
+    required: true
+  },
+  contentHash: {
+    type: String,
+    required: true,
+    index: true // ✅ Index pour des requêtes rapides
+  },
+  status: {
+    type: String,
+    enum: ["pending", "analyzed", "failed"],
+    default: "pending"
+  },
+  analysis: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Analysis"
+  },
+   analysisStarted: {
+    type: Boolean,
+    default: false
+  },
+  lastAnalysisAttempt: {
+    type: Date,
+    default: null
+  },
+  lastAnalysisError: {
+    type: String,
+    default: null
+  },
+  analysisRetryCount: {
+    type: Number,
+    default: 0
   }
-);
+}, {
+  timestamps: true
+});
 
-// Add static method
-contractSchema.statics.getContractFromDb = async function (id) {
-  try {
-    const contract = await this.findById(id).lean();
-    if (!contract) return null;
-    
-    const analyses = await mongoose.model('Analysis').find({ contract: id }).lean();
-    
-    return { ...contract, analyses };
-  } catch (error) {
-    console.error(`Error in getContractFromDb: ${error.message}`);
-    throw error;
-  }
+// ✅ Index composé pour éviter les doublons
+contractSchema.index({ user: 1, contentHash: 1 }, { unique: true });
+
+contractSchema.statics.getContractWithAnalyses = async function(id) {
+  const contract = await this.findById(id).lean();
+  if (!contract) return null;
+
+  const analyses = await mongoose.model("Analysis")
+    .find({ contract: id })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return {
+    ...contract,
+    analyses: analyses.map(a => ({
+      ...a,
+      result: typeof a.result === "string" ? JSON.parse(a.result) : a.result
+    }))
+  };
 };
 
-const Contract = mongoose.models.Contract || mongoose.model('Contract', contractSchema);
-module.exports = Contract;
+contractSchema.statics.cleanupFailedContracts = async function() {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  
+  return await this.updateMany(
+    {
+      analysisStarted: true,
+      lastAnalysisAttempt: { $lt: oneHourAgo },
+      status: "pending"
+    },
+    {
+      analysisStarted: false,
+      status: "failed",
+      lastAnalysisError: "Timeout - analyse non terminée"
+    }
+  );
+};
+
+module.exports = mongoose.models.Contract || mongoose.model("Contract", contractSchema);

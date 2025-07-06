@@ -1,11 +1,12 @@
-const express = require('express');
-const { saveContract, getContract, getContractsWithAnalyses } = require('../controllers/contract.controller');
+const express = require("express")
+const router = express.Router()
+const contractController = require("../controllers/contract.controller")
+
+router.get("/:id/info", contractController.getContract)
+router.post("/save", contractController.saveContract)
+router.post("/analyze/:contractId", contractController.saveAnalysis)
+router.get("/allContracts", contractController.getContractsWithAnalyses)
 
 
-const router = express.Router();
 
-router.get('/:id/info', getContract)
-router.post('/save', saveContract);
-router.get('/allContracts', getContractsWithAnalyses);
-
-module.exports = router;
+module.exports = router

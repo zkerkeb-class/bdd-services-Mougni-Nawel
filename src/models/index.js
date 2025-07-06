@@ -1,7 +1,6 @@
-// models/index.js
 const mongoose = require('mongoose');
 const Contract = require('./contract');
-const Analysis = require('./analysis');
+const Analysis = require('./analysis'); // Supprimé (mongoose) 
 const User = require('./user');
 const Subscription = require('./subscription');
 
@@ -11,16 +10,8 @@ async function connect() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    
-    // Initialize all models
-    await Promise.all([
-      Contract.init(),
-      Analysis.init(),
-      User.init(),
-      Subscription.init()
-    ]);
-    
-    console.log('✅ MongoDB connected and models initialized');
+        
+    console.log('✅ MongoDB connected');
     return mongoose.connection.db;
   } catch (error) {
     console.error('❌ Database connection failed:', error);
@@ -28,7 +19,6 @@ async function connect() {
   }
 }
 
-// Alternative function if you need to return models
 async function connectAndLoadModels() {
   const db = await connect();
   return {
@@ -40,11 +30,11 @@ async function connectAndLoadModels() {
   };
 }
 
-module.exports = { 
-  connect, 
+module.exports = {
+  connect,
   connectAndLoadModels,
-  Contract, 
-  Analysis, 
-  User, 
-  Subscription 
+  Contract,
+  Analysis,
+  User,
+  Subscription
 };
