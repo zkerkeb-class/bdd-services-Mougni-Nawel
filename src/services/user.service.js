@@ -1,4 +1,4 @@
-const User = require("../models/User")
+const User = require("../models/user")
 
 class UserService {
   async findUserByEmail(email, includePassword = false) {

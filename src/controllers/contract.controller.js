@@ -1,5 +1,12 @@
 const contractService = require("../services/contract.service");
 
+const defaultAnalysis = {
+  overview: "Analyse par défaut",
+  clauses_abusives: [],
+  risks: [],
+  recommendations: []
+};
+
 class ContractController {
   async saveContract(req, res) {
     try {

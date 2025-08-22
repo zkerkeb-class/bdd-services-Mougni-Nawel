@@ -51,8 +51,8 @@ const userSchema = new mongoose.Schema(
 );
 
 // Add indexes
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 userSchema.index({ stripeCustomerId: 1 });
 
 // Export the model directly

@@ -26,7 +26,7 @@ const contractSchema = new mongoose.Schema({
     default: "pending"
   },
   analysis: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: "Analysis"
   },
    analysisStarted: {
@@ -52,21 +52,37 @@ const contractSchema = new mongoose.Schema({
 // ✅ Index composé pour éviter les doublons
 contractSchema.index({ user: 1, contentHash: 1 }, { unique: true });
 
+// contractSchema.statics.getContractWithAnalyses = async function(id) {
+//   const contract = await this.findById(id).lean();
+//   if (!contract) return null;
+
+//   const analyses = await mongoose.model("Analysis")
+//     .find({ contract: id })
+//     .sort({ createdAt: -1 })
+//     .lean();
+
+//   return {
+//     ...contract,
+//     analyses: analyses.map(a => ({
+//       ...a,
+//       result: typeof a.result === "string" ? JSON.parse(a.result) : a.result
+//     }))
+//   };
+// };
+
 contractSchema.statics.getContractWithAnalyses = async function(id) {
   const contract = await this.findById(id).lean();
   if (!contract) return null;
 
-  const analyses = await mongoose.model("Analysis")
+  const analyses = await mongoose.model('Analysis')
     .find({ contract: id })
     .sort({ createdAt: -1 })
     .lean();
 
   return {
-    ...contract,
-    analyses: analyses.map(a => ({
-      ...a,
-      result: typeof a.result === "string" ? JSON.parse(a.result) : a.result
-    }))
+    contract,
+    analyses,
+    analysisStatus: 'Analyse terminée' // Valeur par défaut
   };
 };
 
@@ -86,5 +102,7 @@ contractSchema.statics.cleanupFailedContracts = async function() {
     }
   );
 };
+
+// contractSchema.index({ user: 1, contentHash: 1 }, { unique: true });
 
 module.exports = mongoose.models.Contract || mongoose.model("Contract", contractSchema);
