@@ -1,5 +1,5 @@
-const Contract = require("../models/Contract");
-const Analysis = require("../models/Analysis");
+const Contract = require("../models/contract");
+const Analysis = require("../models/analysis");
 const axios = require("axios");
 const mongoose = require("mongoose");
 const crypto = require('crypto');
@@ -15,6 +15,7 @@ class ContractService {
       .update(content.trim().toLowerCase())
       .digest('hex');
   }
+
 
   async verifyUser(token) {
     const authResponse = await axios.get(`${AUTH_SERVICE_URL}/api/auth/me`, {
@@ -49,11 +50,18 @@ class ContractService {
         console.log("Contrat identique trouvé:", existingContract._id);
 
         // ✅ Retourner le contrat existant avec un flag pour le frontend
+        // return {
+        //   ...existingContract.toObject(),
+        //   isDuplicate: true,
+        //   message: "Ce contrat existe déjà"
+        // };
+
         return {
           ...existingContract.toObject(),
           isDuplicate: true,
           message: "Ce contrat existe déjà"
         };
+
       }
 
       const contract = new Contract({
@@ -400,59 +408,62 @@ class ContractService {
   //     }
   // }
 
-  async triggerAIAnalysisIfNotStarted(contractId, token) {
-    const maxRetries = 3;
-    let retryCount = 0;
+// ...autres méthodes...
 
-    while (retryCount < maxRetries) {
-      try {
-        const contract = await Contract.findOneAndUpdate(
-          {
-            _id: contractId,
-            $or: [
-              { analysisStarted: { $ne: true } },
-              { analysisStarted: null }
-            ]
+async triggerAIAnalysisIfNotStarted(contractId, token) {
+  const maxRetries = 3;
+  let retryCount = 0;
+  let lastError;
+
+  while (retryCount < maxRetries) {
+    try {
+      const contract = await Contract.findOneAndUpdate(
+        {
+          _id: contractId,
+          $or: [
+            { analysisStarted: { $ne: true } },
+            { analysisStarted: null }
+          ]
+        },
+        {
+          $set: {
+            analysisStarted: true,
+            lastAnalysisAttempt: new Date()
           },
-          {
-            $set: {
-              analysisStarted: true,
-              lastAnalysisAttempt: new Date()
-            },
-            $inc: {
-              analysisRetryCount: 1
-            }
-          },
-          { new: true, upsert: false }
-        );
+          $inc: {
+            analysisRetryCount: 1
+          }
+        },
+        { new: true, upsert: false }
+      );
 
-        if (!contract) {
-          console.log(`Analyse déjà en cours pour le contrat ${contractId}`);
-          return;
-        }
-
-        console.log(`Démarrage analyse pour contrat ${contractId} (tentative ${retryCount + 1})`);
-        return await this.callAIAnalysis(contractId, token);
-
-      } catch (error) {
-        retryCount++;
-        console.error(`Erreur analyse tentative ${retryCount}:`, error);
-
-        if (retryCount >= maxRetries) {
-          await Contract.findByIdAndUpdate(contractId, {
-            $set: {
-              analysisStarted: false,
-              lastAnalysisError: error.message,
-              status: "failed"
-            }
-          });
-          throw error;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      if (!contract) {
+        return Promise.resolve();
       }
+
+      // Correction : retourne la promesse pour que le spy soit appelé
+      return await this.callAIAnalysis(contractId, token);
+
+    } catch (error) {
+      lastError = error;
+      retryCount++;
+      if (retryCount >= maxRetries) {
+        await Contract.findByIdAndUpdate(contractId, {
+          $set: {
+            analysisStarted: false,
+            lastAnalysisError: error.message,
+            status: "failed"
+          }
+        });
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
     }
   }
+  throw lastError;
+}
+
+// ...autres méthodes...
 
   async callAIAnalysis(contractId, token) {
     try {
@@ -470,32 +481,32 @@ class ContractService {
   }
 
   async normalizeAIResponse(response) {
-  try {
-    // Si la réponse est déjà un objet, vérifier sa structure
-    if (typeof response === 'object' && response !== null) {
-      if (response.analysis_summary) {
-        return response.analysis_summary;
+    try {
+      // Si la réponse est déjà un objet, vérifier sa structure
+      if (typeof response === 'object' && response !== null) {
+        if (response.analysis_summary) {
+          return response.analysis_summary;
+        }
+        return response;
       }
-      return response;
-    }
 
-    // Si c'est une string, tenter de la parser
-    if (typeof response === 'string') {
-      const parsed = JSON.parse(response);
-      return this.normalizeAIResponse(parsed);
-    }
+      // Si c'est une string, tenter de la parser
+      if (typeof response === 'string') {
+        const parsed = JSON.parse(response);
+        return this.normalizeAIResponse(parsed);
+      }
 
-    throw new Error("Format de réponse IA non reconnu");
-  } catch (error) {
-    console.error("Erreur normalisation réponse IA:", error);
-    return {
-      overview: "Erreur d'analyse du contrat",
-      clauses_abusives: [],
-      risks: [],
-      recommendations: []
-    };
+      throw new Error("Format de réponse IA non reconnu");
+    } catch (error) {
+      console.error("Erreur normalisation réponse IA:", error);
+      return {
+        overview: "Erreur d'analyse du contrat",
+        clauses_abusives: [],
+        risks: [],
+        recommendations: []
+      };
+    }
   }
-}
 }
 
 module.exports = new ContractService();

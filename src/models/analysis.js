@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { v4: uuidv4 } = require('uuid');
 
 // const analysisSchema = new mongoose.Schema({
 //   contract: {
@@ -43,6 +44,10 @@ const mongoose = require("mongoose");
 // module.exports = mongoose.models.Analysis || mongoose.model("Analysis", analysisSchema);
 
 const analysisSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: uuidv4
+  },
   contract: {
     type: String,
     ref: "Contract",
