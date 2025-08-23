@@ -8,7 +8,7 @@ jest.mock("../../src/controllers/contract.controller", () => ({
   saveAnalysis: jest.fn(),
 }))
 
-jest.mock("../../src/models/Contract", () => {
+jest.mock("../../src/models/contract", () => {
   const mockContract = {
     findOne: jest.fn(),
     findById: jest.fn(),
