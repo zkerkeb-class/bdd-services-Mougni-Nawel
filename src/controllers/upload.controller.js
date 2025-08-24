@@ -6,14 +6,12 @@ const handleUpload = async (req, res) => {
   try {
     const file = req.file;
 
-    console.log('tette : ', file);
     if (!file) {
       return res.status(400).json({ message: 'Aucun fichier reçu' });
     }
 
     const extractedText = await extractTextFromFile(file);
 
-    // Supprime le fichier temporaire après traitement
     fs.unlinkSync(file.path);
 
     logger.info('Text extracted from file : ', extractedText);

@@ -112,7 +112,6 @@ const createUser = async (req, res) => {
 
 const createGoogleUser = async (req, res) => {
   try {
-    console.log('Données reçues dans createGoogleUser:', req.body);
     
     const userData = req.body;
     
@@ -131,7 +130,6 @@ const createGoogleUser = async (req, res) => {
       });
     }
     
-    // Assurer que firstname et lastname ont des valeurs par défaut
     const processedUserData = {
       email: userData.email,
       googleId: userData.googleId,
@@ -139,7 +137,6 @@ const createGoogleUser = async (req, res) => {
       lastname: userData.lastname || userData.family_name || 'Google'
     };
     
-    console.log('Données traitées:', processedUserData);
     
     const user = await userService.createOrGetGoogleUser(processedUserData);
 
@@ -150,7 +147,6 @@ const createGoogleUser = async (req, res) => {
   } catch (error) {
     console.error("Erreur createGoogleUser:", error);
     
-    // Gestion spécifique des erreurs de validation
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({

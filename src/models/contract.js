@@ -18,7 +18,7 @@ const contractSchema = new mongoose.Schema({
   contentHash: {
     type: String,
     required: true,
-    index: true // ✅ Index pour des requêtes rapides
+    index: true
   },
   status: {
     type: String,
@@ -49,26 +49,8 @@ const contractSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// ✅ Index composé pour éviter les doublons
 contractSchema.index({ user: 1, contentHash: 1 }, { unique: true });
 
-// contractSchema.statics.getContractWithAnalyses = async function(id) {
-//   const contract = await this.findById(id).lean();
-//   if (!contract) return null;
-
-//   const analyses = await mongoose.model("Analysis")
-//     .find({ contract: id })
-//     .sort({ createdAt: -1 })
-//     .lean();
-
-//   return {
-//     ...contract,
-//     analyses: analyses.map(a => ({
-//       ...a,
-//       result: typeof a.result === "string" ? JSON.parse(a.result) : a.result
-//     }))
-//   };
-// };
 
 contractSchema.statics.getContractWithAnalyses = async function(id) {
   const contract = await this.findById(id).lean();
@@ -82,7 +64,7 @@ contractSchema.statics.getContractWithAnalyses = async function(id) {
   return {
     contract,
     analyses,
-    analysisStatus: 'Analyse terminée' // Valeur par défaut
+    analysisStatus: 'Analyse terminée'
   };
 };
 
@@ -103,6 +85,5 @@ contractSchema.statics.cleanupFailedContracts = async function() {
   );
 };
 
-// contractSchema.index({ user: 1, contentHash: 1 }, { unique: true });
 
 module.exports = mongoose.models.Contract || mongoose.model("Contract", contractSchema);

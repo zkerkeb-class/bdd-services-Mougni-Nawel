@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Contract = require('./contract');
-const Analysis = require('./analysis'); // Supprimé (mongoose) 
+const Analysis = require('./analysis');
 const User = require('./user');
 const Subscription = require('./subscription');
 
@@ -11,10 +11,9 @@ async function connect() {
       useUnifiedTopology: true,
     });
         
-    console.log('✅ MongoDB connected');
     return mongoose.connection.db;
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    console.error('Database connection failed:', error);
     throw error;
   }
 }

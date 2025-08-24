@@ -6,17 +6,14 @@ const cors = require("cors")
 const path = require("path")
 require("dotenv").config({ path: path.resolve(__dirname, "../.env.dev") })
 
-// Import des dépendances internes
 const routes = require("./routes")
 const { initializeMetrics, metricsRouter, metricsMiddleware } = require("./utils/metrics")
 const logger = require("./utils/logger")
 
-// Configuration initiale
 const app = express()
-const SERVICE_NAME = "bdd-service" // À modifier selon le service
+const SERVICE_NAME = "bdd-service"
 const PORT = process.env.PORT
 
-// 1. Fonction de connexion à MongoDB avec retry
 async function connectWithRetry() {
   const pRetry = (await import("p-retry")).default
   return pRetry(
@@ -35,7 +32,6 @@ async function connectWithRetry() {
   )
 }
 
-// 2. Initialisation de l'application
 const initializeApp = async () => {
   try {
     await connectWithRetry()
@@ -43,11 +39,10 @@ const initializeApp = async () => {
     mongoose.set("debug", true)
   } catch (error) {
     logger.error("❌ Échec de la connexion à MongoDB après 3 tentatives", error)
-    throw error // Important pour arrêter le serveur si la DB est critique
+    throw error
   }
 }
 
-// 3. Middlewares de sécurité
 app.use(helmet())
 app.use(
   cors({
@@ -57,19 +52,15 @@ app.use(
   })
 )
 
-// 4. Middlewares de base
 app.use(express.json({ limit: "10mb" }))
 app.use(express.urlencoded({ extended: true }))
 
-// 5. Métriques
 initializeMetrics()
 app.use(metricsMiddleware)
 app.use(metricsRouter)
 
-// 6. Routes principales
 app.use("/api", routes)
 
-// 7. Health Check amélioré
 app.get("/health", (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? "connected" : "disconnected"
   
@@ -95,7 +86,6 @@ app.get("/ready", (req, res) => {
   })
 })
 
-// 8. Gestion des timeouts
 app.use(
   timeout.handler({
     timeout: 10000,
@@ -106,7 +96,6 @@ app.use(
   })
 )
 
-// 9. Gestion des erreurs standardisée
 app.use((err, req, res, next) => {
   const { recordError } = require("./utils/metrics")
   recordError("unhandled_error", err)
@@ -118,7 +107,6 @@ app.use((err, req, res, next) => {
     method: req.method,
   })
 
-  // Gestion spécifique des erreurs Mongoose
   if (err instanceof mongoose.Error) {
     return res.status(400).json({
       error: {
@@ -139,7 +127,6 @@ app.use((err, req, res, next) => {
   })
 })
 
-// 10. Démarrage du serveur
 const startServer = async () => {
   try {
     await initializeApp()
@@ -155,7 +142,6 @@ const startServer = async () => {
   }
 }
 
-// 11. Graceful shutdown amélioré
 const shutdown = async () => {
   try {
     logger.info(`Arrêt de ${SERVICE_NAME}...`)

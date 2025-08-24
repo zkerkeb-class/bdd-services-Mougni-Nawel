@@ -46,14 +46,12 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // This automatically adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// Add indexes
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 userSchema.index({ stripeCustomerId: 1 });
 
-// Export the model directly
 module.exports = mongoose.models.User || mongoose.model("User", userSchema);
