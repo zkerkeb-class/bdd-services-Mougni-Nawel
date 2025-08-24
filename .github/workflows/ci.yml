@@ -2,12 +2,13 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "deploy" ]
   pull_request:
     branches: [ "main" ]
 
 jobs:
   build-and-test:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -39,9 +40,26 @@ jobs:
         if: hashFiles('__tests__/**') != ''
         run: npm test -- --watchAll=false
 
+  deploy:
+    if: github.ref == 'refs/heads/deploy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Créer .env.dev pour le deploy
+        run: |
+          touch .env.dev
+          echo "secretOrPrivateKey=${{ secrets.secretOrPrivateKey }}" >> .env.dev
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env.dev
+          echo "PORT=${{ secrets.PORT }}" >> .env.dev
+          echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> .env.dev
+          echo "AI_SERVICE_URL=${{ secrets.AI_SERVICE_URL }}" >> .env.dev
+          echo "AUTH_SERVICE_URL=${{ secrets.AUTH_SERVICE_URL }}" >> .env.dev
+          echo "NODE_ENV=${{ secrets.NODE_ENV }}" >> .env.dev
+
       - name: Set lowercase Docker user
         run: echo "DOCKER_USER=$(echo ${{ github.actor }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
 
       - name: Build Docker image
         run: |

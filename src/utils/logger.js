@@ -1,6 +1,5 @@
 const pino = require('pino');
 
-// Configuration de base du logger
 const logger = pino({
   transport: {
     target: 'pino-pretty',
@@ -8,12 +7,11 @@ const logger = pino({
       colorize: true,
       translateTime: 'SYS:standard',
       ignore: 'pid,hostname',
-      messageKey: 'msg', // Changé de 'message' à 'msg' pour correspondre aux logs
-      singleLine: true,  // Pour un affichage plus propre
+      messageKey: 'msg',
+      singleLine: true,
       minimumLevel: 'info'
     },
   },
 });
 
-// Exporter directement le logger sans modification des méthodes
 module.exports = logger;
