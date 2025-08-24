@@ -1,10 +1,8 @@
-// utils/metrics.js - Configuration complète des métriques
 const client = require('prom-client');
 const express = require('express');
 const os = require('os');
 const fs = require('fs');
 
-// Configuration du registre avec préfixe par service
 let servicePrefix = '';
 
 function initializeMetrics(serviceName) {
@@ -19,7 +17,6 @@ function initializeMetrics(serviceName) {
   });
 }
 
-// 📊 MÉTRIQUES PERSONNALISÉES
 
 // 1. Compteur de requêtes HTTP
 const httpRequestsTotal = new client.Counter({
@@ -159,7 +156,6 @@ function metricsMiddleware(req, res, next) {
   next();
 }
 
-// 🚀 ROUTER MÉTRIQUES
 const metricsRouter = express.Router();
 
 metricsRouter.get('/metrics', async (req, res) => {
@@ -184,7 +180,6 @@ metricsRouter.get('/health', (req, res) => {
   });
 });
 
-// 🎯 FONCTIONS UTILITAIRES
 
 function recordError(errorType, error) {
   errorCounter.labels(errorType, servicePrefix).inc();

@@ -72,7 +72,6 @@ class ContractController {
       const user = await contractService.verifyUser(token);
       const contracts = await contractService.getUserContracts(user._id);
 
-      // Ajouter le message de statut pour chaque contrat
       const contractsWithStatus = contracts.map((contract) => ({
         ...contract,
         analysisStatus: {

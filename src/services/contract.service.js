@@ -6,7 +6,6 @@ const crypto = require('crypto');
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL;
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
-// const BDD_SERVICE_URL = process.env.BDD_SERVICE_URL;
 
 class ContractService {
 
@@ -36,25 +35,16 @@ class ContractService {
     try {
       const contentHash = this.generateContentHash(text);
 
-      // 🔍 Vérification améliorée des doublons
       const existingContract = await Contract.findOne({
         $or: [
-          { content: text, user: userId }, // Contenu exact
-          { contentHash: contentHash, user: userId }, // Hash identique
+          { content: text, user: userId },
+          { contentHash: contentHash, user: userId },
         ],
         status: { $in: ["pending", "analyzed"] }
       }).session(session);
 
       if (existingContract) {
         await session.abortTransaction();
-        console.log("Contrat identique trouvé:", existingContract._id);
-
-        // ✅ Retourner le contrat existant avec un flag pour le frontend
-        // return {
-        //   ...existingContract.toObject(),
-        //   isDuplicate: true,
-        //   message: "Ce contrat existe déjà"
-        // };
 
         return {
           ...existingContract.toObject(),
@@ -66,7 +56,7 @@ class ContractService {
 
       const contract = new Contract({
         content: text,
-        contentHash: contentHash, // ✅ Stocker le hash
+        contentHash: contentHash,
         user: userId,
         status: "pending",
         analysisStarted: false,
@@ -76,10 +66,8 @@ class ContractService {
       await contract.save({ session });
       await session.commitTransaction();
 
-      // ✅ Déclencher l'analyse avec une meilleure gestion des erreurs
       this.triggerAIAnalysisIfNotStarted(contract._id, token).catch((error) => {
         console.error("Erreur analyse IA:", error);
-        // Optionnel : marquer le contrat comme ayant échoué
         Contract.findByIdAndUpdate(contract._id, {
           analysisStarted: false,
           lastAnalysisError: error.message
@@ -100,61 +88,7 @@ class ContractService {
     }
   }
 
-  // // ✅ Améliorer la gestion des analyses simultanées
-  // async triggerAIAnalysisIfNotStarted(contractId, token) {
-  //   const maxRetries = 3;
-  //   let retryCount = 0;
 
-  //   while (retryCount < maxRetries) {
-  //     try {
-  //       // Utiliser findOneAndUpdate avec upsert pour éviter les race conditions
-  //       const contract = await Contract.findOneAndUpdate(
-  //         { 
-  //           _id: contractId, 
-  //           $or: [
-  //             { analysisStarted: { $ne: true } },
-  //             { analysisStarted: null }
-  //           ]
-  //         },
-  //         { 
-  //           analysisStarted: true,
-  //           lastAnalysisAttempt: new Date(),
-  //           analysisRetryCount: { $inc: 1 }
-  //         },
-  //         { new: true, upsert: false }
-  //       );
-
-  //       if (!contract) {
-  //         console.log(`Analyse déjà en cours pour le contrat ${contractId}`);
-  //         return;
-  //       }
-
-  //       console.log(`Démarrage analyse pour contrat ${contractId} (tentative ${retryCount + 1})`);
-  //       await this.callAIAnalysis(contractId, token);
-  //       return; // Succès, sortir de la boucle
-
-  //     } catch (error) {
-  //       retryCount++;
-  //       console.error(`Erreur analyse tentative ${retryCount}:`, error);
-
-  //       if (retryCount >= maxRetries) {
-  //         // Réinitialiser le flag et sauvegarder l'analyse par défaut
-  //         await Contract.findByIdAndUpdate(contractId, { 
-  //           analysisStarted: false,
-  //           lastAnalysisError: error.message 
-  //         });
-
-  //         await this.saveDefaultAnalysis(contractId);
-  //         throw error;
-  //       }
-
-  //       // Attendre avant la prochaine tentative
-  //       await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-  //     }
-  //   }
-  // }
-
-  // ✅ Méthode séparée pour l'appel à l'IA
   async callAIAnalysis(contractId, token) {
     try {
       const response = await axios.get(`${AI_SERVICE_URL}/api/analyze/analyzeContract/${contractId}`, {
@@ -162,48 +96,14 @@ class ContractService {
         timeout: 30000,
       });
 
-      console.log("Analyse IA réussie pour contrat", contractId);
       return response.data;
     } catch (error) {
       console.error("Erreur analyse IA:", error);
-      // ✅ Fallback amélioré - sauvegarde directe sans appel API
       await this.saveDefaultAnalysis(contractId);
       throw error;
     }
   }
 
-  // ✅ Sauvegarde directe de l'analyse par défaut (évite l'appel API)
-  // async saveDefaultAnalysis(contractId) {
-  //   const defaultAnalysis = {
-  //     overview: "Analyse du contrat effectuée avec succès. Le contrat présente plusieurs points d'attention.",
-  //     clauses_abusives: [
-  //       {
-  //         clause: "Clause de non-concurrence excessive",
-  //         explanation: "La durée de non-concurrence dépasse les limites légales recommandées.",
-  //         suggested_change: "Réduire la durée à 12 mois maximum.",
-  //       },
-  //     ],
-  //     risks: [
-  //       {
-  //         risk: "Risque juridique élevé",
-  //         explanation: "Certaines clauses peuvent être contestées en justice.",
-  //         severity: "medium",
-  //         suggested_solution: "Réviser les clauses problématiques.",
-  //       },
-  //     ],
-  //     recommendations: [
-  //       {
-  //         recommendation: "Révision par un avocat",
-  //         justification: "Le contrat nécessite une révision juridique approfondie.",
-  //         suggested_change: "Consulter un avocat spécialisé en droit du travail.",
-  //       },
-  //     ],
-  //   };
-
-  //   // ✅ Sauvegarde directe sans appel API
-  //   await this.saveAnalysis(contractId, defaultAnalysis);
-  //   console.log("Analyse par défaut sauvegardée pour contrat", contractId);
-  // }
 
   async getContractWithAnalyses(id) {
     const contract = await Contract.findById(id).lean();
@@ -287,7 +187,7 @@ class ContractService {
         {
           status: "analyzed",
           analysis: analysis._id,
-          analysisStarted: false // Réinitialiser le flag
+          analysisStarted: false 
         },
         { session }
       );
@@ -303,36 +203,6 @@ class ContractService {
     }
   }
 
-  // ✅ Méthode pour trigger manuel (évite la double analyse)
-  // async triggerAnalysisWithFallback(contractId, token) {
-  //   try {
-  //     const contract = await Contract.findById(contractId);
-  //     if (!contract) {
-  //       throw new Error("Contrat non trouvé");
-  //     }
-
-  //     // ✅ Vérifier si une analyse existe déjà
-  //     const existingAnalysis = await Analysis.findOne({ contract: contractId });
-  //     if (existingAnalysis) {
-  //       console.log("Analyse déjà existante, retour des données existantes");
-  //       return existingAnalysis.result;
-  //     }
-
-  //     // ✅ Vérifier si l'analyse est déjà en cours
-  //     if (contract.analysisStarted && 
-  //         contract.lastAnalysisAttempt && 
-  //         (new Date() - contract.lastAnalysisAttempt) < 60000) { // 1 minute
-  //       console.log("Analyse déjà en cours, attente...");
-  //       return { message: "Analyse en cours, veuillez patienter..." };
-  //     }
-
-  //     // Déclencher l'analyse
-  //     return await this.triggerAIAnalysisIfNotStarted(contractId, token);
-  //   } catch (error) {
-  //     console.error("Erreur lors du déclenchement manuel:", error);
-  //     throw error;
-  //   }
-  // }
 
   calculateRiskLevel(risks) {
     if (!Array.isArray(risks)) return "low";
@@ -360,55 +230,6 @@ class ContractService {
     return "Statut inconnu";
   }
 
-  //   async triggerAIAnalysisIfNotStarted(contractId, token) {
-  //     const maxRetries = 3;
-  //     let retryCount = 0;
-
-  //     while (retryCount < maxRetries) {
-  //       try {
-  //         const contract = await Contract.findOneAndUpdate(
-  //           { 
-  //             _id: contractId, 
-  //             $or: [
-  //               { analysisStarted: { $ne: true } },
-  //               { analysisStarted: null }
-  //             ]
-  //           },
-  //           { 
-  //             analysisStarted: true,
-  //             lastAnalysisAttempt: new Date(),
-  //             analysisRetryCount: { $inc: 1 }
-  //           },
-  //           { new: true, upsert: false }
-  //         );
-
-  //         if (!contract) {
-  //           console.log(`Analyse déjà en cours pour le contrat ${contractId}`);
-  //           return;
-  //         }
-
-  //         console.log(`Démarrage analyse pour contrat ${contractId} (tentative ${retryCount + 1})`);
-  //         return await this.callAIAnalysis(contractId, token);
-
-  //       } catch (error) {
-  //         retryCount++;
-  //         console.error(`Erreur analyse tentative ${retryCount}:`, error);
-
-  //         if (retryCount >= maxRetries) {
-  //           await Contract.findByIdAndUpdate(contractId, { 
-  //             analysisStarted: false,
-  //             lastAnalysisError: error.message,
-  //             status: "failed" // Nouveau statut pour les échecs
-  //           });
-  //           throw error;
-  //         }
-
-  //         await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-  //       }
-  //     }
-  // }
-
-// ...autres méthodes...
 
 async triggerAIAnalysisIfNotStarted(contractId, token) {
   const maxRetries = 3;
@@ -441,7 +262,6 @@ async triggerAIAnalysisIfNotStarted(contractId, token) {
         return Promise.resolve();
       }
 
-      // Correction : retourne la promesse pour que le spy soit appelé
       return await this.callAIAnalysis(contractId, token);
 
     } catch (error) {
@@ -463,7 +283,6 @@ async triggerAIAnalysisIfNotStarted(contractId, token) {
   throw lastError;
 }
 
-// ...autres méthodes...
 
   async callAIAnalysis(contractId, token) {
     try {
@@ -472,17 +291,15 @@ async triggerAIAnalysisIfNotStarted(contractId, token) {
         timeout: 30000,
       });
 
-      console.log("Analyse IA réussie pour contrat", contractId);
       return response.data;
     } catch (error) {
       console.error("Erreur analyse IA:", error);
-      throw error; // On ne fait plus de fallback
+      throw error;
     }
   }
 
   async normalizeAIResponse(response) {
     try {
-      // Si la réponse est déjà un objet, vérifier sa structure
       if (typeof response === 'object' && response !== null) {
         if (response.analysis_summary) {
           return response.analysis_summary;
@@ -490,7 +307,6 @@ async triggerAIAnalysisIfNotStarted(contractId, token) {
         return response;
       }
 
-      // Si c'est une string, tenter de la parser
       if (typeof response === 'string') {
         const parsed = JSON.parse(response);
         return this.normalizeAIResponse(parsed);

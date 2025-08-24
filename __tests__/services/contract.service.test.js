@@ -7,7 +7,7 @@ const createQueryChain = (resolvedValue) => {
     ? {
       ...resolvedValue,
       toObject: jest.fn().mockReturnValue({ ...resolvedValue }),
-      save: jest.fn().mockResolvedValue(resolvedValue), // Add save for consistency
+      save: jest.fn().mockResolvedValue(resolvedValue),
     }
     : null
 
@@ -18,7 +18,7 @@ const createQueryChain = (resolvedValue) => {
   }
 
   chain.lean.mockImplementation(() => ({
-    exec: jest.fn().mockResolvedValue(resolvedValue), // Resolve to plain object
+    exec: jest.fn().mockResolvedValue(resolvedValue),
     session: jest.fn().mockReturnThis(),
   }))
 
