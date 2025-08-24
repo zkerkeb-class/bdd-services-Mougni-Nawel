@@ -1,0 +1,21 @@
+module.exports = {
+  testEnvironment: "node",
+  setupFilesAfterEnv: ["<rootDir>/__tests__/setup.js"],
+  testMatch: ["<rootDir>/__tests__/**/*.test.js"],
+  collectCoverage: true,
+  collectCoverageFrom: [
+    "src/**/*.js",
+    "!__tests__/**",
+    "!models/**",
+    "!src/index.js",
+    "!src/**/index.js",
+    "!src/config/**",
+    "!src/utils/**",
+  ],
+  coverageReporters: ["text", "lcov"],
+  clearMocks: true,
+  resetMocks: true,
+  verbose: true,
+  testPathIgnorePatterns: ["/node_modules/"],
+  modulePathIgnorePatterns: ["<rootDir>/dist/"],
+};
